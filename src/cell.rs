@@ -31,7 +31,7 @@ impl Display for Cell {
         }; */
 
         let char = match self.is_alive {
-            true => "◻️",
+            true => "█",
             false => " ",
         };
 
