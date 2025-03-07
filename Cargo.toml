@@ -1,0 +1,10 @@
+[package]
+name = "conway-game-life"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+clap = { version = "4.5.31", features = ["derive"] }
+color-eyre = "0.6.3"
+log = "0.4.26"
+rand = "0.9.0"
