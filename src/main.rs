@@ -1,6 +1,10 @@
 use clap::{Parser, arg, command};
 use color_eyre::Result;
-use std::path::PathBuf;
+use crossterm::{
+    ExecutableCommand,
+    event::{DisableMouseCapture, EnableMouseCapture},
+};
+use std::{io::stdout, path::PathBuf};
 
 mod cell;
 mod universe;
@@ -8,29 +12,21 @@ mod universe;
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 struct Args {
-    /// Dimension of the universe (NxN)
-    #[arg(short, long, required = true)]
-    dimension: u32,
-
     /// Seed for the random grid generation
     #[arg(short, long, default_value_t = 1)]
     seed: u64,
 
     /// Density of the universe in range (0,1]
-    #[arg(short, long, default_value_t = 0.5)]
+    #[arg(short = 'D', long, default_value_t = 0.5)]
     density: f64,
 
     /// Path to a text file to initialize the universe
     #[arg(short, long)]
     path: Option<PathBuf>,
 
-    /// Alive character or string for the cell
-    #[arg(short, long, default_value = "█")]
-    alive_char: String,
-
-    /// Dead character or string for the cell
-    #[arg(short, long, default_value = " ")]
-    dead_char: String,
+    /// speed (frames per second) for the simulation
+    #[arg(short = 'S', long, default_value_t = 30)]
+    speed: u32,
 }
 
 fn main() -> Result<()> {
@@ -38,26 +34,25 @@ fn main() -> Result<()> {
     let args = Args::parse();
 
     let Args {
-        dimension,
         seed,
         density,
-        alive_char,
-        dead_char,
+        path,
+        speed,
         ..
     } = args;
 
-    let mut universe = match args.path {
-        Some(_) => universe::Universe::from_plaintext_file(dimension, args.path),
-        None => universe::Universe::new(dimension, seed, density),
+    let terminal = ratatui::init();
+
+    let mut universe = match path {
+        Some(path) => {
+            universe::Universe::from_plaintext_file(path, speed, terminal.size().unwrap())
+        }
+        None => universe::Universe::new(seed, density, speed, terminal.size().unwrap()),
     };
 
-    universe.set_alive_char(alive_char);
-    universe.set_dead_char(dead_char);
-
-    loop {
-        let updated_grid = universe.compute_next_generation();
-        universe.set_grid(updated_grid);
-        println!("{}", universe);
-        std::thread::sleep(std::time::Duration::from_millis(100));
-    }
+    stdout().execute(EnableMouseCapture)?;
+    let app_result = universe.run(terminal);
+    stdout().execute(DisableMouseCapture)?;
+    ratatui::restore();
+    app_result
 }

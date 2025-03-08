@@ -15,8 +15,4 @@ impl Cell {
     pub fn is_alive(&self) -> bool {
         self.is_alive
     }
-
-    pub fn set_state(&mut self, is_alive: bool) {
-        self.is_alive = is_alive;
-    }
 }
