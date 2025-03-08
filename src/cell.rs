@@ -1,5 +1,3 @@
-use std::fmt::Display;
-
 #[derive(Clone)]
 pub struct Cell {
     is_alive: bool,
@@ -20,21 +18,5 @@ impl Cell {
 
     pub fn set_state(&mut self, is_alive: bool) {
         self.is_alive = is_alive;
-    }
-}
-
-impl Display for Cell {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        /* let char = match self.is_alive {
-            true => "🙂",
-            false => "☠️",
-        }; */
-
-        let char = match self.is_alive {
-            true => "█",
-            false => " ",
-        };
-
-        write!(f, "{char}")
     }
 }

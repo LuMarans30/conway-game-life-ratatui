@@ -11,6 +11,8 @@ pub struct Universe {
     seed: Option<u64>,
     density: Option<f64>,
     path: Option<PathBuf>,
+    alive_char: String,
+    dead_char: String,
 }
 
 impl Universe {
@@ -25,8 +27,11 @@ impl Universe {
             dimension,
             grid: vec![],
             path: None,
+            alive_char: String::from("█"),
+            dead_char: String::from(" "),
         }
     }
+
     pub fn new(dimension: u32, seed: u64, density: f64) -> Self {
         if !(0.0..=1.0).contains(&density) {
             panic!("density must be between 0 and 1");
@@ -35,8 +40,6 @@ impl Universe {
         let mut universe = Self {
             seed: Some(seed),
             density: Some(density),
-            grid: vec![],
-            path: None,
             ..Self::default(dimension)
         };
 
@@ -47,9 +50,6 @@ impl Universe {
 
     pub fn from_plaintext_file(dimension: u32, path: Option<PathBuf>) -> Self {
         let mut universe = Self {
-            seed: None,
-            density: None,
-            grid: vec![],
             path,
             ..Self::default(dimension)
         };
@@ -79,13 +79,7 @@ impl Universe {
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         for _ in 0..self.dimension {
-            let row: Vec<Cell> = vec![Cell::default(); self.dimension as usize]
-                .into_iter()
-                .map(|mut cell| {
-                    cell.set_state(rng.random_bool(density));
-                    cell
-                })
-                .collect::<Vec<Cell>>();
+            let row: Vec<Cell> = vec![Cell::new(rng.random_bool(density)); self.dimension as usize];
             self.grid.push(row);
         }
     }
@@ -131,14 +125,14 @@ impl Universe {
 
             // Pad with dead cells if the row is too short
             if row.len() < dimension {
-                row.resize(dimension, Cell::new(false));
+                row.resize(dimension, Cell::default());
             }
 
             self.grid.push(row);
         }
 
         while self.grid.len() < dimension {
-            self.grid.push(vec![Cell::new(false); dimension]);
+            self.grid.push(vec![Cell::default(); dimension]);
         }
 
         Ok(())
@@ -148,6 +142,7 @@ impl Universe {
         let current_grid = &self.grid;
         let rows = current_grid.len();
         let cols = if rows > 0 { current_grid[0].len() } else { 0 };
+
         let mut next_grid = vec![vec![Cell::default(); cols]; rows];
 
         next_grid
@@ -208,6 +203,14 @@ impl Universe {
     pub fn set_grid(&mut self, grid: Vec<Vec<Cell>>) {
         self.grid = grid;
     }
+
+    pub fn set_alive_char(&mut self, alive_char: String) {
+        self.alive_char = alive_char;
+    }
+
+    pub fn set_dead_char(&mut self, dead_char: String) {
+        self.dead_char = dead_char;
+    }
 }
 
 impl Display for Universe {
@@ -217,7 +220,14 @@ impl Display for Universe {
             .iter()
             .map(|row| {
                 row.iter()
-                    .fold(String::new(), |acc, cell| acc + &cell.to_string())
+                    .map(|cell| {
+                        if cell.is_alive() {
+                            self.alive_char.clone()
+                        } else {
+                            self.dead_char.clone()
+                        }
+                    })
+                    .collect::<String>()
             })
             .collect::<Vec<String>>()
             .join("\n");

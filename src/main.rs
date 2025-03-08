@@ -23,6 +23,14 @@ struct Args {
     /// Path to a text file to initialize the universe
     #[arg(short, long)]
     path: Option<PathBuf>,
+
+    /// Alive character or string for the cell
+    #[arg(short, long, default_value = "█")]
+    alive_char: String,
+
+    /// Dead character or string for the cell
+    #[arg(short, long, default_value = " ")]
+    dead_char: String,
 }
 
 fn main() -> Result<()> {
@@ -32,11 +40,16 @@ fn main() -> Result<()> {
     let dimension = args.dimension;
     let seed = args.seed;
     let density = args.density;
+    let alive_char = args.alive_char;
+    let dead_char = args.dead_char;
 
     let mut universe = match args.path {
         Some(_) => universe::Universe::from_plaintext_file(dimension, args.path),
         None => universe::Universe::new(dimension, seed, density),
     };
+
+    universe.set_alive_char(alive_char);
+    universe.set_dead_char(dead_char);
 
     loop {
         let updated_grid = universe.compute_next_generation();
