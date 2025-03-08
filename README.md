@@ -1,4 +1,4 @@
-## Conway's Game of Life in Rust
+## Conway's Game of Life in Rust with Ratatui
 
 A Rust implementation of Conway's Game of Life. Created as part of a university exercise.
 
