@@ -1,38 +1,55 @@
-use std::{fmt::Display, path::PathBuf};
+use std::{
+    path::PathBuf,
+    time::{Duration, Instant},
+};
 
 use color_eyre::{Result, eyre::Error};
+use crossterm::event::{self, Event, KeyCode, KeyEventKind};
 use rand::{Rng, SeedableRng};
+use ratatui::{
+    DefaultTerminal, Frame,
+    layout::{Constraint, Layout, Rect, Size},
+    style::{Color, Stylize},
+    symbols::Marker,
+    text::Text,
+    widgets::{
+        Block, Widget,
+        canvas::{Canvas, Points},
+    },
+};
 
 use crate::cell::Cell;
 
 pub struct Universe {
-    dimension: u32,
+    speed: Option<u32>,
     grid: Vec<Vec<Cell>>,
     seed: Option<u64>,
     density: Option<f64>,
     path: Option<PathBuf>,
-    alive_char: String,
-    dead_char: String,
+    exit: bool,
+    marker: Marker,
+    size: Size,
 }
 
 impl Universe {
-    fn default(dimension: u32) -> Self {
-        if dimension == 0 {
-            panic!("dimension must be greater than 0");
+    fn with_speed(speed: u32) -> Self {
+        if speed == 0 {
+            panic!("speed must be greater than 0");
         }
 
         Self {
+            speed: Some(speed),
             seed: None,
+            size: Size::default(),
             density: None,
-            dimension,
             grid: vec![],
             path: None,
-            alive_char: String::from("█"),
-            dead_char: String::from(" "),
+            marker: Marker::Block,
+            exit: false,
         }
     }
 
-    pub fn new(dimension: u32, seed: u64, density: f64) -> Self {
+    pub fn new(seed: u64, density: f64, speed: u32, size: Size) -> Self {
         if !(0.0..=1.0).contains(&density) {
             panic!("density must be between 0 and 1");
         }
@@ -40,7 +57,8 @@ impl Universe {
         let mut universe = Self {
             seed: Some(seed),
             density: Some(density),
-            ..Self::default(dimension)
+            size,
+            ..Self::with_speed(speed)
         };
 
         universe.initialize_random();
@@ -48,10 +66,12 @@ impl Universe {
         universe
     }
 
-    pub fn from_plaintext_file(dimension: u32, path: Option<PathBuf>) -> Self {
+    pub fn from_plaintext_file(path: PathBuf, speed: u32, size: Size) -> Self {
         let mut universe = Self {
-            path,
-            ..Self::default(dimension)
+            path: Some(path),
+            speed: Some(speed),
+            size,
+            ..Self::with_speed(speed)
         };
 
         universe.parse_text_file().unwrap();
@@ -59,48 +79,122 @@ impl Universe {
         universe
     }
 
-    pub fn initialize_random(&mut self) {
-        let density = match self.density {
-            Some(density) => density,
+    pub fn run(&mut self, mut terminal: DefaultTerminal) -> Result<()> {
+        let speed = match self.speed {
+            Some(speed) => speed,
             None => {
-                log::warn!("density not set, using default density of 0.5");
-                0.5
+                log::warn!("speed not set, using default speed of 60");
+                60
             }
         };
 
-        let seed = match self.seed {
-            Some(seed) => seed,
-            None => {
-                log::warn!("seed not set, using default seed of 0");
-                0
+        let tick_rate = Duration::from_millis(1000 / speed as u64);
+        let mut last_tick = Instant::now();
+        while !self.exit {
+            terminal.draw(|frame| self.draw(frame))?;
+            let timeout = tick_rate.saturating_sub(last_tick.elapsed());
+            if event::poll(timeout)? {
+                if let Event::Key(key) = event::read()? {
+                    self.handle_key_press(key);
+                }
             }
-        };
+
+            if last_tick.elapsed() >= tick_rate {
+                let grid = Self::compute_next_generation(self);
+                self.set_grid(grid);
+                last_tick = Instant::now();
+            }
+        }
+        Ok(())
+    }
+
+    fn draw(&self, frame: &mut Frame) {
+        let header = Text::from_iter([
+            "Conway's Game of Life".bold(),
+            "<q> Quit | <enter> Change Marker".into(),
+        ]);
+
+        let vertical_layout = Layout::vertical([
+            Constraint::Length(header.height() as u16), // Header area
+            Constraint::Min(0),                         // Canvas takes remaining space
+        ]);
+
+        let [header_area, canvas_area] = vertical_layout.areas(frame.area());
+
+        frame.render_widget(header.centered(), header_area);
+        frame.render_widget(self.draw_canvas(canvas_area), canvas_area);
+    }
+
+    fn draw_canvas(&self, area: Rect) -> impl Widget + '_ {
+        Canvas::default()
+            .block(Block::bordered().title("Universe"))
+            .marker(self.marker)
+            .x_bounds([0.0, f64::from(area.width)])
+            .y_bounds([0.0, f64::from(area.height)])
+            .paint(move |ctx| {
+                let points = self
+                    .grid
+                    .iter()
+                    .enumerate()
+                    .flat_map(|(x, row)| {
+                        row.iter().enumerate().filter_map(move |(y, cell)| {
+                            if cell.is_alive() {
+                                Some((y as f64, x as f64))
+                            } else {
+                                None
+                            }
+                        })
+                    })
+                    .collect::<Vec<(f64, f64)>>();
+                ctx.draw(&Points {
+                    coords: &points,
+                    color: Color::White,
+                });
+            })
+    }
+
+    fn handle_key_press(&mut self, key: event::KeyEvent) {
+        if key.kind != KeyEventKind::Press {
+            return;
+        }
+        match key.code {
+            KeyCode::Char('q') => self.exit = true,
+            KeyCode::Enter => {
+                self.marker = match self.marker {
+                    Marker::Dot => Marker::Braille,
+                    Marker::Braille => Marker::Block,
+                    Marker::Block => Marker::HalfBlock,
+                    Marker::HalfBlock => Marker::Bar,
+                    Marker::Bar => Marker::Dot,
+                };
+            }
+            _ => {}
+        }
+    }
+
+    pub fn initialize_random(&mut self) {
+        let density = self.density.unwrap_or(0.5);
+        let seed = self.seed.unwrap_or(0);
 
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
 
-        for _ in 0..self.dimension {
-            let row: Vec<Cell> = vec![Cell::new(rng.random_bool(density)); self.dimension as usize];
+        let width = self.size.width as usize;
+        let height = self.size.height as usize;
+
+        for _ in 0..height {
+            let row: Vec<Cell> = (0..width)
+                .map(|_| Cell::new(rng.random_bool(density)))
+                .collect();
             self.grid.push(row);
         }
     }
 
     pub fn parse_text_file(&mut self) -> Result<(), Error> {
-        let path = match &self.path {
-            Some(path) => {
-                if !path.exists() {
-                    return Err(Error::msg("file does not exist"));
-                }
-
-                path
-            }
-            None => {
-                return Err(Error::msg("file path not set"));
-            }
-        };
-
+        let path = self.path.as_ref().ok_or(Error::msg("file path not set"))?;
         let file_contents = std::fs::read_to_string(path)?;
 
-        let dimension = self.dimension as usize;
+        let width = self.size.width as usize;
+        let height = self.size.height as usize;
 
         // Read and filter empty and comment lines
         let mut lines: Vec<&str> = file_contents
@@ -109,8 +203,8 @@ impl Universe {
             .collect();
 
         // Truncate or pad rows to match dimension
-        lines.truncate(dimension);
-        while lines.len() < dimension {
+        lines.truncate(height);
+        while lines.len() < width {
             lines.push("");
         }
 
@@ -120,19 +214,19 @@ impl Universe {
             let mut row: Vec<Cell> = line
                 .chars()
                 .map(|c| Cell::new(c != '.'))
-                .take(dimension)
+                .take(width)
                 .collect();
 
             // Pad with dead cells if the row is too short
-            if row.len() < dimension {
-                row.resize(dimension, Cell::default());
+            if row.len() < width {
+                row.resize(width, Cell::default());
             }
 
             self.grid.push(row);
         }
 
-        while self.grid.len() < dimension {
-            self.grid.push(vec![Cell::default(); dimension]);
+        while self.grid.len() < height {
+            self.grid.push(vec![Cell::default(); width]);
         }
 
         Ok(())
@@ -143,95 +237,49 @@ impl Universe {
         let rows = current_grid.len();
         let cols = if rows > 0 { current_grid[0].len() } else { 0 };
 
-        let mut next_grid = vec![vec![Cell::default(); cols]; rows];
-
-        next_grid
-            .iter_mut()
-            .enumerate()
-            .take(rows)
-            .for_each(|(x, row)| {
-                row.iter_mut().enumerate().take(cols).for_each(|(y, cell)| {
-                    cell.set_state(Self::tick(rows, cols, current_grid, x, y));
-                })
-            });
-
-        next_grid
+        (0..rows)
+            .map(|x| {
+                (0..cols)
+                    .map(|y| Cell::new(Self::tick(rows, cols, current_grid, x, y)))
+                    .collect()
+            })
+            .collect()
     }
 
     fn tick(rows: usize, cols: usize, current_grid: &[Vec<Cell>], x: usize, y: usize) -> bool {
-        let mut alive_neighbors = 0;
         let cell = &current_grid[x][y];
 
-        for dx in -1..=1 {
-            for dy in -1..=1 {
-                // Skip the current cell
-                if dx == 0 && dy == 0 {
-                    continue;
-                }
+        // Pre computed neighbor offsets
+        const NEIGHBOR_OFFSETS: [(i32, i32); 8] = [
+            (-1, -1),
+            (-1, 0),
+            (-1, 1),
+            (0, -1),
+            (0, 1),
+            (1, -1),
+            (1, 0),
+            (1, 1),
+        ];
 
-                let neighbor_x = x as i32 + dx;
-                let neighbor_y = y as i32 + dy;
-
-                // Check if neighbor is within grid bounds
-                if neighbor_x >= 0
-                    && neighbor_x < rows as i32
-                    && neighbor_y >= 0
-                    && neighbor_y < cols as i32
-                {
-                    let neighbor_x = neighbor_x as usize;
-                    let neighbor_y = neighbor_y as usize;
-                    if current_grid[neighbor_x][neighbor_y].is_alive() {
-                        alive_neighbors += 1;
-                    }
-                }
-            }
-        }
+        let alive_neighbors = NEIGHBOR_OFFSETS
+            .iter()
+            .filter_map(|(dx, dy)| {
+                let x = x as i32 + dx;
+                let y = y as i32 + dy;
+                (x >= 0 && x < rows as i32 && y >= 0 && y < cols as i32)
+                    .then(|| current_grid[x as usize][y as usize].is_alive())
+            })
+            .filter(|&alive| alive)
+            .count();
 
         // Apply Conway's Game of Life rules
-        match (cell.is_alive(), alive_neighbors) {
-            (true, 2 | 3) => true, // Survival
-            (false, 3) => true,    // Reproduction
-            _ => false,            // Death
-        }
-    }
-
-    pub fn clear_screen(&self) {
-        std::process::Command::new("clear").status().unwrap();
+        matches!(
+            (cell.is_alive(), alive_neighbors),
+            (true, 2 | 3) | (false, 3)
+        )
     }
 
     pub fn set_grid(&mut self, grid: Vec<Vec<Cell>>) {
         self.grid = grid;
-    }
-
-    pub fn set_alive_char(&mut self, alive_char: String) {
-        self.alive_char = alive_char;
-    }
-
-    pub fn set_dead_char(&mut self, dead_char: String) {
-        self.dead_char = dead_char;
-    }
-}
-
-impl Display for Universe {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let grid_string = self
-            .grid
-            .iter()
-            .map(|row| {
-                row.iter()
-                    .map(|cell| {
-                        if cell.is_alive() {
-                            self.alive_char.clone()
-                        } else {
-                            self.dead_char.clone()
-                        }
-                    })
-                    .collect::<String>()
-            })
-            .collect::<Vec<String>>()
-            .join("\n");
-
-        self.clear_screen();
-        write!(f, "{}", grid_string)
     }
 }
