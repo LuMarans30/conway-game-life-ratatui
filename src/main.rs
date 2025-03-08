@@ -40,7 +40,7 @@ fn main() -> Result<()> {
 
     loop {
         universe.clear_screen();
-        let updated_grid = universe.tick();
+        let updated_grid = universe.compute_next_generation();
         universe.set_grid(updated_grid);
         println!("{}", universe);
         std::thread::sleep(std::time::Duration::from_millis(100));

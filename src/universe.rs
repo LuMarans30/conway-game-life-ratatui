@@ -144,53 +144,61 @@ impl Universe {
         Ok(())
     }
 
-    pub fn tick(&mut self) -> Vec<Vec<Cell>> {
+    pub fn compute_next_generation(&mut self) -> Vec<Vec<Cell>> {
         let current_grid = &self.grid;
         let rows = current_grid.len();
         let cols = if rows > 0 { current_grid[0].len() } else { 0 };
         let mut next_grid = vec![vec![Cell::default(); cols]; rows];
 
-        for x in 0..rows {
-            for y in 0..cols {
-                let cell = &current_grid[x][y];
-                let mut alive_neighbors = 0;
+        next_grid
+            .iter_mut()
+            .enumerate()
+            .take(rows)
+            .for_each(|(x, row)| {
+                row.iter_mut().enumerate().take(cols).for_each(|(y, cell)| {
+                    let next_state = Self::tick(rows, cols, current_grid, x, y);
+                    cell.set_state(next_state);
+                })
+            });
 
-                for dx in -1..=1 {
-                    for dy in -1..=1 {
-                        // Skip the current cell
-                        if dx == 0 && dy == 0 {
-                            continue;
-                        }
+        next_grid
+    }
 
-                        let neighbor_x = x as i32 + dx;
-                        let neighbor_y = y as i32 + dy;
+    fn tick(rows: usize, cols: usize, current_grid: &[Vec<Cell>], x: usize, y: usize) -> bool {
+        let mut alive_neighbors = 0;
+        let cell = &current_grid[x][y];
 
-                        // Check if neighbor is within grid bounds
-                        if neighbor_x >= 0
-                            && neighbor_x < rows as i32
-                            && neighbor_y >= 0
-                            && neighbor_y < cols as i32
-                        {
-                            let neighbor_x = neighbor_x as usize;
-                            let neighbor_y = neighbor_y as usize;
-                            if current_grid[neighbor_x][neighbor_y].is_alive() {
-                                alive_neighbors += 1;
-                            }
-                        }
-                    }
+        for dx in -1..=1 {
+            for dy in -1..=1 {
+                // Skip the current cell
+                if dx == 0 && dy == 0 {
+                    continue;
                 }
 
-                // Apply Conway's Game of Life rules
-                let next_state = match (cell.is_alive(), alive_neighbors) {
-                    (true, 2 | 3) => true, // Survival
-                    (false, 3) => true,    // Reproduction
-                    _ => false,            // Death
-                };
-                next_grid[x][y].set_state(next_state);
+                let neighbor_x = x as i32 + dx;
+                let neighbor_y = y as i32 + dy;
+
+                // Check if neighbor is within grid bounds
+                if neighbor_x >= 0
+                    && neighbor_x < rows as i32
+                    && neighbor_y >= 0
+                    && neighbor_y < cols as i32
+                {
+                    let neighbor_x = neighbor_x as usize;
+                    let neighbor_y = neighbor_y as usize;
+                    if current_grid[neighbor_x][neighbor_y].is_alive() {
+                        alive_neighbors += 1;
+                    }
+                }
             }
         }
 
-        next_grid
+        // Apply Conway's Game of Life rules
+        match (cell.is_alive(), alive_neighbors) {
+            (true, 2 | 3) => true, // Survival
+            (false, 3) => true,    // Reproduction
+            _ => false,            // Death
+        }
     }
 
     pub fn clear_screen(&self) {
