@@ -151,8 +151,7 @@ impl Universe {
             .take(rows)
             .for_each(|(x, row)| {
                 row.iter_mut().enumerate().take(cols).for_each(|(y, cell)| {
-                    let next_state = Self::tick(rows, cols, current_grid, x, y);
-                    cell.set_state(next_state);
+                    cell.set_state(Self::tick(rows, cols, current_grid, x, y));
                 })
             });
 

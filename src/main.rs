@@ -37,11 +37,14 @@ fn main() -> Result<()> {
     color_eyre::install()?;
     let args = Args::parse();
 
-    let dimension = args.dimension;
-    let seed = args.seed;
-    let density = args.density;
-    let alive_char = args.alive_char;
-    let dead_char = args.dead_char;
+    let Args {
+        dimension,
+        seed,
+        density,
+        alive_char,
+        dead_char,
+        ..
+    } = args;
 
     let mut universe = match args.path {
         Some(_) => universe::Universe::from_plaintext_file(dimension, args.path),
