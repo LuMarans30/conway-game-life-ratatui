@@ -222,6 +222,7 @@ impl Display for Universe {
             .collect::<Vec<String>>()
             .join("\n");
 
+        self.clear_screen();
         write!(f, "{}", grid_string)
     }
 }
