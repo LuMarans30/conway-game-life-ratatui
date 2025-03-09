@@ -1,5 +1,5 @@
 [package]
-name = "conway-game-life"
+name = "conway-game-life-ratatui"
 version = "0.3.0"
 edition = "2024"
 
