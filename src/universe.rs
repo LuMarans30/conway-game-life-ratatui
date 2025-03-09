@@ -193,42 +193,59 @@ impl Universe {
         let path = self.path.as_ref().ok_or(Error::msg("file path not set"))?;
         let file_contents = std::fs::read_to_string(path)?;
 
-        let width = self.size.width as usize;
-        let height = self.size.height as usize;
+        let grid_width = self.size.width as usize;
+        let grid_height = self.size.height as usize;
 
         // Read and filter empty and comment lines
-        let mut lines: Vec<&str> = file_contents
+        let pattern_lines: Vec<&str> = file_contents
             .lines()
             .filter(|line| !line.is_empty() && !line.starts_with("!"))
             .collect();
 
-        // Truncate or pad rows to match dimension
-        lines.truncate(height);
-        while lines.len() < width {
-            lines.push("");
+        // Calculate pattern dimensions
+        let pattern_height = pattern_lines.len();
+        let pattern_width = pattern_lines
+            .iter()
+            .map(|line| line.len())
+            .max()
+            .unwrap_or(0);
+
+        // Ensure grid is large enough
+        if pattern_width > grid_width || pattern_height > grid_height {
+            return Err(Error::msg("Grid too small for pattern"));
         }
 
+        // Calculate centering offsets
+        let vert_pad = grid_height.saturating_sub(pattern_height);
+        let top_pad = vert_pad / 2;
+        let left_pad = (grid_width.saturating_sub(pattern_width)) / 2;
+
+        // Build vertically centered grid
         self.grid.clear();
+        for _ in 0..top_pad {
+            self.grid.push(vec![Cell::default(); grid_width]);
+        }
 
-        for line in lines {
-            let mut row: Vec<Cell> = line
-                .chars()
-                .map(|c| Cell::new(c != '.'))
-                .take(width)
-                .collect();
+        for line in pattern_lines {
+            let mut row = vec![Cell::default(); grid_width];
+            let start_idx = left_pad;
+            let end_idx = (left_pad + line.len()).min(grid_width);
 
-            // Pad with dead cells if the row is too short
-            if row.len() < width {
-                row.resize(width, Cell::default());
-            }
+            line.chars()
+                .take(end_idx - start_idx)
+                .enumerate()
+                .for_each(|(i, c)| {
+                    //start from left_pad to horizontally center the pattern
+                    row[start_idx + i] = Cell::new(c != '.');
+                });
 
             self.grid.push(row);
         }
 
-        while self.grid.len() < height {
-            self.grid.push(vec![Cell::default(); width]);
+        // Fill remaining rows for vertical centering
+        while self.grid.len() < grid_height {
+            self.grid.push(vec![Cell::default(); grid_width]);
         }
-
         Ok(())
     }
 
