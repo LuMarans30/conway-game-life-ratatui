@@ -14,32 +14,32 @@ jobs:
           - release_for: Linux-x86_64
             os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
-            bin: conway-game-life
-            name: conway-game-life-Linux-x86_64.tar.gz
+            bin: conway-game-life-ratatui
+            name: conway-game-life-ratatui-Linux-x86_64.tar.gz
             command: build
           - release_for: Linux-aarch64
             os: ubuntu-latest
             target: aarch64-unknown-linux-gnu
-            bin: conway-game-life
-            name: conway-game-life-Linux-aarch64.tar.gz
+            bin: conway-game-life-ratatui
+            name: conway-game-life-ratatui-Linux-aarch64.tar.gz
             command: build
           - release_for: Windows-x86_64
             os: windows-latest
             target: x86_64-pc-windows-msvc
-            bin: conway-game-life.exe
-            name: conway-game-life-Windows-x86_64.zip
+            bin: conway-game-life-ratatui.exe
+            name: conway-game-life-ratatui-Windows-x86_64.zip
             command: build
           - release_for: macOS-x86_64
             os: macOS-latest
             target: x86_64-apple-darwin
-            bin: conway-game-life
-            name: conway-game-life-macOS-x86_64.tar.gz
+            bin: conway-game-life-ratatui
+            name: conway-game-life-ratatui-macOS-x86_64.tar.gz
             command: build
           - release_for: macOS-aarch64
             os: macOS-latest
             target: aarch64-apple-darwin
-            bin: conway-game-life
-            name: conway-game-life-macOS-aarch64.tar.gz
+            bin: conway-game-life-ratatui
+            name: conway-game-life-ratatui-macOS-aarch64.tar.gz
             command: build
     runs-on: ${{ matrix.os }}
     env:
