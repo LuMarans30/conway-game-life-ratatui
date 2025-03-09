@@ -1,5 +1,8 @@
 [package]
 name = "conway-game-life-ratatui"
+description = "Conway's Game of Life in the CLI using ratatui"
+repository = "https://github.com/LuMarans30/conway-game-life-ratatui"
+license = "MIT"
 version = "0.3.0"
 edition = "2024"
 
