@@ -225,7 +225,7 @@ dependencies = [
 
 [[package]]
 name = "conway-game-life-ratatui"
-version = "0.4.0"
+version = "0.5.0"
 dependencies = [
  "clap",
  "color-eyre",
