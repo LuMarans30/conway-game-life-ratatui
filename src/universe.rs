@@ -28,71 +28,18 @@ pub struct Universe {
     size: Size,
 }
 
-pub struct UniverseBuilder {
-    size: Size,
-    speed: u32,
-    initialization: UniverseInitialization,
-}
-
-enum UniverseInitialization {
-    Random { seed: u64, density: f64 },
-    File(PathBuf),
-}
-
-impl UniverseBuilder {
-    pub fn new(size: Size) -> Self {
-        Self {
-            size,
-            speed: 30,
-            initialization: UniverseInitialization::Random {
-                seed: 1,
-                density: 0.5,
-            },
-        }
-    }
-
-    pub fn speed(mut self, speed: u32) -> Self {
-        self.speed = speed;
-        self
-    }
-
-    pub fn random(mut self, seed: u64, density: f64) -> Self {
-        self.initialization = UniverseInitialization::Random { seed, density };
-        self
-    }
-
-    pub fn with_file(mut self, path: PathBuf) -> Self {
-        self.initialization = UniverseInitialization::File(path);
-        self
-    }
-
-    pub fn build(self) -> Result<Universe> {
-        let mut universe = Universe {
-            speed: self.speed,
-            grid: vec![],
-            marker: Marker::Block,
-            exit: false,
-            size: self.size,
-        };
-
-        match self.initialization {
-            UniverseInitialization::Random { seed, density } => {
-                if !(0.0..=1.0).contains(&density) {
-                    return Err(Error::msg("Density must be in range [0,1]"));
-                }
-                universe.initialize_random(seed, density);
-            }
-            UniverseInitialization::File(path) => {
-                universe.parse_text_file(path)?;
-            }
-        }
-
-        Ok(universe)
-    }
-}
-
 impl Universe {
-    fn initialize_random(&mut self, seed: u64, density: f64) {
+    pub fn new(size: Size, speed: u32, grid: Vec<Vec<Cell>>, exit: bool, marker: Marker) -> Self {
+        Self {
+            speed,
+            grid,
+            marker,
+            exit,
+            size,
+        }
+    }
+
+    pub fn initialize_random(&mut self, seed: u64, density: f64) {
         let mut rng = rand::rngs::StdRng::seed_from_u64(seed);
 
         let width = self.size.width as usize;
@@ -106,7 +53,7 @@ impl Universe {
         }
     }
 
-    fn parse_text_file(&mut self, path: PathBuf) -> Result<(), Error> {
+    pub fn parse_text_file(&mut self, path: PathBuf) -> Result<(), Error> {
         path.try_exists()?;
 
         let file_contents = std::fs::read_to_string(path)?;

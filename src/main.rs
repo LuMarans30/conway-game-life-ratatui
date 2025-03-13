@@ -8,6 +8,9 @@ use std::{io::stdout, path::PathBuf};
 
 mod cell;
 mod universe;
+mod universe_builder;
+
+use universe_builder::UniverseBuilder;
 
 #[derive(Debug, Parser)]
 #[clap(version, about, long_about = None)]
@@ -58,7 +61,7 @@ fn main() -> Result<()> {
     let terminal = ratatui::init();
 
     let universe_builder =
-        universe::UniverseBuilder::new(terminal.size().unwrap()).speed(global_opts.speed);
+        UniverseBuilder::new(terminal.size().unwrap(), None, None, None).speed(global_opts.speed);
 
     let universe = match command {
         Command::File { path } => universe_builder.with_file(path.unwrap()).build(),
