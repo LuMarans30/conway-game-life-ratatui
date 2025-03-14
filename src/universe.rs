@@ -53,6 +53,7 @@ impl Universe {
         }
     }
 
+    /// Initialize universe from plaintext file
     pub fn parse_text_file(&mut self, path: PathBuf) -> Result<(), Error> {
         path.try_exists()?;
 
