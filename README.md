@@ -1,5 +1,5 @@
 ## Conway's Game of Life in Rust with Ratatui
-<a href="https://crates.io/crates/conway-game-life-ratatui">
+<a href="https://crates.io/crates/conway-game-life-ratatui" target="_blank">
   
 ![Crates.io Total Downloads](https://img.shields.io/crates/d/conway-game-life-ratatui)
 ![Crates.io Size](https://img.shields.io/crates/size/conway-game-life-ratatui)
