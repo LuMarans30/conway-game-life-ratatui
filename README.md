@@ -14,4 +14,8 @@ The program supports two modes:
 
 Parameters are configured via the CLI using the `clap` crate.
 
-![demo](https://github.com/user-attachments/assets/37e2b2d8-672a-4ff2-8c69-9c7557617ba0)
+<a href="https://conwaylife.com/patterns/maxpredecessor25x25.cells">
+  
+![demo](https://github.com/user-attachments/assets/06908d90-90c6-4bcc-bd31-24168544fc69)
+
+</a>
