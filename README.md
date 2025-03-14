@@ -1,5 +1,8 @@
 ## Conway's Game of Life in Rust with Ratatui
 
+![Crates.io Total Downloads](https://img.shields.io/crates/d/conway-game-life-ratatui)
+![Crates.io Size](https://img.shields.io/crates/size/conway-game-life-ratatui)
+
 A Rust implementation of Conway's Game of Life. Created as part of a university exercise.
 
 The program supports two modes:
