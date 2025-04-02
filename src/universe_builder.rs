@@ -47,10 +47,8 @@ impl UniverseBuilder {
         let mut universe = Universe::new(self.size, self.speed, vec![], false, Marker::Block);
 
         match self.initialization {
-            UniverseInitialization::Random { seed, density } => {
-                universe.initialize_random(seed, density)
-            }
-            UniverseInitialization::File(path) => universe.parse_text_file(path)?,
+            UniverseInitialization::Random { seed, density } => universe.init_random(seed, density),
+            UniverseInitialization::File(path) => universe.parse_file(path)?,
         }
 
         Ok(universe)

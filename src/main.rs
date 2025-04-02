@@ -7,6 +7,7 @@ use crossterm::{
 use std::{io::stdout, path::PathBuf};
 
 mod cell;
+mod file_parser;
 mod universe;
 mod universe_builder;
 
