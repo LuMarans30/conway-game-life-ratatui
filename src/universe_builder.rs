@@ -15,6 +15,7 @@ pub struct UniverseBuilder {
 enum UniverseInitialization {
     Random { seed: u64, density: f64 },
     File(PathBuf),
+    Stdin(String),
 }
 
 impl UniverseBuilder {
@@ -56,6 +57,11 @@ impl UniverseBuilder {
         self
     }
 
+    pub fn with_stdin(mut self, input: String) -> Self {
+        self.initialization = UniverseInitialization::Stdin(input);
+        self
+    }
+
     pub fn build(self) -> Result<Universe> {
         let mut universe = Universe::new(
             self.size,
@@ -68,7 +74,8 @@ impl UniverseBuilder {
 
         match self.initialization {
             UniverseInitialization::Random { seed, density } => universe.init_random(seed, density),
-            UniverseInitialization::File(path) => universe.parse_file(path)?,
+            UniverseInitialization::File(path) => universe.parse(path)?,
+            UniverseInitialization::Stdin(input) => universe.parse(input.as_str())?,
         }
 
         Ok(universe)

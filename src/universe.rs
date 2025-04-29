@@ -1,7 +1,4 @@
-use std::{
-    path::PathBuf,
-    time::{Duration, Instant},
-};
+use std::time::{Duration, Instant};
 
 use color_eyre::{
     Result,
@@ -21,7 +18,10 @@ use ratatui::{
     },
 };
 
-use crate::{cell::Cell, file_parser::FileParser};
+use crate::{
+    cell::Cell,
+    parser::{ParseInput, Parser},
+};
 
 pub struct Universe {
     speed: u32,
@@ -65,9 +65,9 @@ impl Universe {
         }
     }
 
-    pub fn parse_file(&mut self, path: PathBuf) -> Result<(), Error> {
-        let mut file_parser = FileParser::new(self.size.width as usize, self.size.height as usize);
-        let grid = file_parser.parse_text_file(path)?;
+    pub fn parse<T: ParseInput>(&mut self, input: T) -> Result<(), Error> {
+        let mut parser = Parser::new(self.size.width as usize, self.size.height as usize);
+        let grid = parser.parse(input)?;
         self.set_grid(grid);
         Ok(())
     }

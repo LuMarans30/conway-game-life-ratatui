@@ -1,13 +1,19 @@
-use clap::{Args, Parser, Subcommand};
-use color_eyre::Result;
+use clap::{Args, Parser, Subcommand, ValueHint};
+use color_eyre::{
+    Result,
+    eyre::{Error, eyre},
+};
 use crossterm::{
     ExecutableCommand,
     event::{DisableMouseCapture, EnableMouseCapture},
 };
-use std::{io::stdout, path::PathBuf};
+use std::{
+    io::{BufRead, IsTerminal, Read, stdout},
+    path::PathBuf,
+};
 
 mod cell;
-mod file_parser;
+mod parser;
 mod universe;
 mod universe_builder;
 
@@ -20,7 +26,7 @@ pub struct App {
     global_opts: GlobalOpts,
 
     #[clap(subcommand)]
-    command: Command,
+    command: Option<Command>,
 }
 
 #[derive(Debug, Subcommand)]
@@ -38,7 +44,7 @@ enum Command {
     /// Generate a universe from a text file
     File {
         /// Path to a text file to initialize the universe
-        #[clap(short, long)]
+        #[clap(short, long, required = true, value_hint = ValueHint::FilePath)]
         path: Option<PathBuf>,
     },
 }
@@ -70,16 +76,44 @@ fn run() -> Result<()> {
     } = args;
 
     let terminal = ratatui::init();
+    let size = terminal
+        .size()
+        .map_err(|_| eyre!("Failed to get terminal size"))?;
 
-    let universe_builder = UniverseBuilder::new(terminal.size().unwrap(), None, None, None, None)
+    let universe_builder = UniverseBuilder::new(size, None, None, None, None)
         .speed(global_opts.speed)
         .color(global_opts.color);
 
-    let mut universe = match command {
-        Command::File { path } => universe_builder.with_file(path.unwrap()).build(),
-        Command::Random { seed, density } => universe_builder.random(seed, density).build(),
-    }?;
+    let mut universe = {
+        match command {
+            Some(Command::File { path }) => universe_builder.with_file(path.unwrap()).build(),
+            Some(Command::Random { seed, density }) => {
+                universe_builder.random(seed, density).build()
+            }
+            None => match get_stdin_input() {
+                Ok(input) => universe_builder.with_stdin(input).build(),
+                Err(_) => universe_builder.random(1, 0.5).build(),
+            },
+        }?
+    };
 
     stdout().execute(EnableMouseCapture)?;
     universe.run(terminal)
+}
+
+fn get_stdin_input() -> Result<String, Error> {
+    if std::io::stdin().is_terminal() {
+        return Err(eyre!("No stdin input provided"));
+    }
+
+    let mut input = String::new();
+    std::io::stdin()
+        .read_to_string(&mut input)
+        .map_err(|e| eyre!("Failed to read stdin: {}", e))?;
+
+    if input.trim().is_empty() {
+        Err(eyre!("stdin input is empty"))
+    } else {
+        Ok(input)
+    }
 }
