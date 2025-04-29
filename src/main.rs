@@ -1,8 +1,8 @@
 use clap::{Args, Parser, Subcommand};
 use color_eyre::Result;
 use crossterm::{
-    event::{DisableMouseCapture, EnableMouseCapture},
     ExecutableCommand,
+    event::{DisableMouseCapture, EnableMouseCapture},
 };
 use std::{io::stdout, path::PathBuf};
 
@@ -48,9 +48,19 @@ struct GlobalOpts {
     /// speed (frames per second) for the simulation
     #[clap(short = 'S', long, default_value_t = 30)]
     speed: u32,
+    /// cell color in RGB format (e.g. RRR,GGG,BBB)
+    #[clap(short, long, default_value = "255,255,255")]
+    color: String,
 }
 
 fn main() -> Result<()> {
+    let app_result = run();
+    stdout().execute(DisableMouseCapture)?;
+    ratatui::restore();
+    app_result
+}
+
+fn run() -> Result<()> {
     color_eyre::install()?;
     let args = App::parse();
 
@@ -61,17 +71,15 @@ fn main() -> Result<()> {
 
     let terminal = ratatui::init();
 
-    let universe_builder =
-        UniverseBuilder::new(terminal.size().unwrap(), None, None, None).speed(global_opts.speed);
+    let universe_builder = UniverseBuilder::new(terminal.size().unwrap(), None, None, None, None)
+        .speed(global_opts.speed)
+        .color(global_opts.color);
 
-    let universe = match command {
+    let mut universe = match command {
         Command::File { path } => universe_builder.with_file(path.unwrap()).build(),
         Command::Random { seed, density } => universe_builder.random(seed, density).build(),
-    };
+    }?;
 
     stdout().execute(EnableMouseCapture)?;
-    let app_result = universe?.run(terminal);
-    stdout().execute(DisableMouseCapture)?;
-    ratatui::restore();
-    app_result
+    universe.run(terminal)
 }
