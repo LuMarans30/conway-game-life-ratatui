@@ -679,12 +679,11 @@ checksum = "2b15c43186be67a4fd63bee50d0303afffcef381492ebe2c5d87f324e1b8815c"
 
 [[package]]
 name = "rletxtconv"
-version = "1.1.0"
+version = "1.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "da4143e4acfe41c10dd03d369013c4384fd0ba0dfb4045cc8fd5de695615fbda"
+checksum = "8ae4bfb88413422752a792ea2b270ed8fb3a9f2394a3f0617fe5167916b801a5"
 dependencies = [
  "clap",
- "color-eyre",
  "lazy_static",
  "regex",
  "thiserror",
