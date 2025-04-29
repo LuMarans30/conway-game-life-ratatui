@@ -3,19 +3,22 @@ use std::{
     time::{Duration, Instant},
 };
 
-use color_eyre::{eyre::Error, Result};
+use color_eyre::{
+    Result,
+    eyre::{Error, eyre},
+};
 use crossterm::event::{self, Event, KeyCode, KeyEventKind};
 use rand::{Rng, SeedableRng};
 use ratatui::{
+    DefaultTerminal, Frame,
     layout::{Constraint, Layout, Rect, Size},
     style::{Color, Stylize},
     symbols::Marker,
     text::Text,
     widgets::{
-        canvas::{Canvas, Points},
         Block, Widget,
+        canvas::{Canvas, Points},
     },
-    DefaultTerminal, Frame,
 };
 
 use crate::{cell::Cell, file_parser::FileParser};
@@ -24,16 +27,25 @@ pub struct Universe {
     speed: u32,
     grid: Vec<Vec<Cell>>,
     marker: Marker,
+    color: String,
     exit: bool,
     size: Size,
 }
 
 impl Universe {
-    pub fn new(size: Size, speed: u32, grid: Vec<Vec<Cell>>, exit: bool, marker: Marker) -> Self {
+    pub fn new(
+        size: Size,
+        speed: u32,
+        grid: Vec<Vec<Cell>>,
+        exit: bool,
+        marker: Marker,
+        color: String,
+    ) -> Self {
         Self {
             speed,
             grid,
             marker,
+            color,
             exit,
             size,
         }
@@ -122,11 +134,39 @@ impl Universe {
                         })
                     })
                     .collect::<Vec<(f64, f64)>>();
+                let color = match Self::parse_color(&self.color) {
+                    Ok(color) => color,
+                    Err(e) => {
+                        eprintln!("Error parsing color ({}): {:?}", self.color, e);
+                        Color::White // Default color on error
+                    }
+                };
+
                 ctx.draw(&Points {
                     coords: &points,
-                    color: Color::White,
+                    color,
                 });
             })
+    }
+
+    fn parse_color(color: &str) -> Result<Color, Error> {
+        let tokens: Vec<&str> = color
+            .split(|c: char| !c.is_ascii_hexdigit())
+            .filter(|s| !s.is_empty())
+            .collect();
+
+        if tokens.len() != 3 {
+            return Err(eyre!("Invalid RGB format. Expected 3 components"));
+        }
+
+        let mut components = [0u8; 3];
+        for (i, token) in tokens.iter().enumerate() {
+            components[i] = token
+                .parse::<u8>()
+                .map_err(|_| eyre!("Invalid hex value: {}", token))?;
+        }
+
+        Ok(Color::Rgb(components[0], components[1], components[2]))
     }
 
     fn handle_key_press(&mut self, key: event::KeyEvent) {

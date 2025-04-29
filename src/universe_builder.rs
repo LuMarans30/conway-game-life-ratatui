@@ -8,6 +8,7 @@ use crate::universe::Universe;
 pub struct UniverseBuilder {
     size: Size,
     speed: u32,
+    color: String,
     initialization: UniverseInitialization,
 }
 
@@ -17,10 +18,17 @@ enum UniverseInitialization {
 }
 
 impl UniverseBuilder {
-    pub fn new(size: Size, speed: Option<u32>, seed: Option<u64>, density: Option<f64>) -> Self {
+    pub fn new(
+        size: Size,
+        speed: Option<u32>,
+        seed: Option<u64>,
+        density: Option<f64>,
+        color: Option<String>,
+    ) -> Self {
         Self {
             size,
             speed: speed.unwrap_or(30),
+            color: color.unwrap_or(String::from("0x00FFFFFF")),
             initialization: UniverseInitialization::Random {
                 seed: seed.unwrap_or(1),
                 density: density.unwrap_or(0.5).clamp(0.0, 1.0),
@@ -30,6 +38,11 @@ impl UniverseBuilder {
 
     pub fn speed(mut self, speed: u32) -> Self {
         self.speed = speed;
+        self
+    }
+
+    pub fn color(mut self, color: String) -> Self {
+        self.color = color;
         self
     }
 
@@ -44,7 +57,14 @@ impl UniverseBuilder {
     }
 
     pub fn build(self) -> Result<Universe> {
-        let mut universe = Universe::new(self.size, self.speed, vec![], false, Marker::Block);
+        let mut universe = Universe::new(
+            self.size,
+            self.speed,
+            vec![],
+            false,
+            Marker::Block,
+            self.color,
+        );
 
         match self.initialization {
             UniverseInitialization::Random { seed, density } => universe.init_random(seed, density),
