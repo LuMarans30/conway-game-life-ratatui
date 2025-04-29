@@ -8,7 +8,7 @@ use crossterm::{
     event::{DisableMouseCapture, EnableMouseCapture},
 };
 use std::{
-    io::{BufRead, IsTerminal, Read, stdout},
+    io::{IsTerminal, Read, stdout},
     path::PathBuf,
 };
 
