@@ -1,7 +1,7 @@
 use clap::{Args, Parser, Subcommand, ValueHint};
 use color_eyre::{
     Result,
-    eyre::{Error, eyre},
+    eyre::{Error, OptionExt, eyre},
 };
 use crossterm::{
     ExecutableCommand,
@@ -86,13 +86,19 @@ fn run() -> Result<()> {
 
     let mut universe = {
         match command {
-            Some(Command::File { path }) => universe_builder.with_file(path.unwrap()).build(),
+            Some(Command::File { path }) => {
+                let path = path.ok_or_eyre("Path is invalid");
+                universe_builder.with_file(path?).build()
+            }
             Some(Command::Random { seed, density }) => {
                 universe_builder.random(seed, density).build()
             }
             None => match get_stdin_input() {
                 Ok(input) => universe_builder.with_stdin(input).build(),
-                Err(_) => universe_builder.random(1, 0.5).build(),
+                Err(e) => {
+                    eprintln!("Warning: Falling back to random universe. Reason: {e}");
+                    universe_builder.random(1, 0.5).build()
+                }
             },
         }?
     };
