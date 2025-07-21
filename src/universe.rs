@@ -81,11 +81,10 @@ impl Universe {
         while !self.exit {
             terminal.draw(|frame| self.draw(frame))?;
             let timeout = tick_rate.saturating_sub(last_tick.elapsed());
-            if event::poll(timeout)? {
-                if let Event::Key(key) = event::read()? {
+            if event::poll(timeout)?
+                && let Event::Key(key) = event::read()? {
                     self.handle_key_press(key);
                 }
-            }
 
             if last_tick.elapsed() >= tick_rate {
                 let grid = Self::compute_next_generation(self);
